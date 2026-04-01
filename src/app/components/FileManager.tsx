@@ -17,6 +17,7 @@ export interface UploadedFile {
   type: string;
   uploadDate: Date;
   groupId: string | null;
+  meetingId?: number | null;
 }
 
 export interface FileGroup {

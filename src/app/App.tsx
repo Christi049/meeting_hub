@@ -14,6 +14,7 @@ const COLORS = [
 ];
 
 export default function App() {
+  const API_BASE = "http://127.0.0.1:8000";
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [groups, setGroups] = useState<FileGroup[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -25,14 +26,27 @@ export default function App() {
     },
   ]);
 
-  const handleFilesUploaded = (uploadedFiles: File[]) => {
-    const newFiles: UploadedFile[] = uploadedFiles.map((file) => ({
+  const handleFilesUploaded = async (uploadedFiles: File[]) => {
+    const formData = new FormData();
+    uploadedFiles.forEach((file) => formData.append("files", file));
+
+    const response = await fetch(`${API_BASE}/upload-transcripts`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!response.ok) {
+      throw new Error(`Upload failed (${response.status})`);
+    }
+    const uploadedResults = await response.json();
+
+    const newFiles: UploadedFile[] = uploadedFiles.map((file, idx) => ({
       id: Math.random().toString(36).substr(2, 9),
       name: file.name,
       size: file.size,
       type: file.type,
       uploadDate: new Date(),
       groupId: null,
+      meetingId: uploadedResults[idx]?.meeting_id ?? null,
     }));
 
     setFiles((prev) => [...prev, ...newFiles]);
@@ -42,11 +56,11 @@ export default function App() {
       id: Math.random().toString(36).substr(2, 9),
       text: `I've received ${uploadedFiles.length} file${
         uploadedFiles.length > 1 ? "s" : ""
-      }. ${
+      } and indexed them for semantic search. ${
         uploadedFiles.length === 1
           ? `The file "${uploadedFiles[0].name}" has been uploaded successfully.`
           : "All files have been uploaded successfully."
-      } You can organize them into groups if you'd like!`,
+      } You can now ask cross-meeting questions with citations.`,
       sender: "bot",
       timestamp: new Date(),
     };
@@ -132,7 +146,7 @@ export default function App() {
     }
   };
 
-  const handleSendMessage = (text: string) => {
+  const handleSendMessage = async (text: string) => {
     // Add user message
     const userMessage: ChatMessage = {
       id: Math.random().toString(36).substr(2, 9),
@@ -142,41 +156,39 @@ export default function App() {
     };
     setMessages((prev) => [...prev, userMessage]);
 
-    // Generate bot response
-    setTimeout(() => {
-      let botResponse = "";
-      const lowerText = text.toLowerCase();
-
-      if (lowerText.includes("help") || lowerText.includes("what can you do")) {
-        botResponse = "I can help you manage your files! You can:\n• Upload files by dragging and dropping\n• Create groups to organize your files\n• Move files between groups\n• Delete files or groups\n• Ask me questions about your file collection";
-      } else if (lowerText.includes("how many") && lowerText.includes("file")) {
-        botResponse = `You currently have ${files.length} file${
-          files.length !== 1 ? "s" : ""
-        } uploaded.`;
-      } else if (lowerText.includes("group")) {
-        botResponse = `You have ${groups.length} group${
-          groups.length !== 1 ? "s" : ""
-        }. ${
-          groups.length > 0
-            ? `Your groups are: ${groups.map((g) => g.name).join(", ")}.`
-            : "You can create groups to organize your files!"
-        }`;
-      } else if (lowerText.includes("upload")) {
-        botResponse =
-          "To upload files, you can either drag and drop them into the upload area, or click on it to select files from your computer. I support multiple file uploads at once!";
-      } else {
-        botResponse =
-          "I'm here to help you manage your files! You can upload files, create groups to organize them, and I'll keep track of everything. Is there anything specific you'd like to know?";
+    try {
+      const response = await fetch(`${API_BASE}/query`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: text }),
+      });
+      if (!response.ok) {
+        throw new Error(`Query failed (${response.status})`);
       }
-
+      const data = await response.json();
+      const citations = (data.citations || [])
+        .slice(0, 5)
+        .map((c: { meeting?: string; section?: string }) => `- ${c.meeting || "Meeting"} (${c.section || "chunk"})`)
+        .join("\n");
+      const botResponse = citations
+        ? `${data.answer}\n\nSources:\n${citations}`
+        : data.answer;
       const botMessage: ChatMessage = {
         id: Math.random().toString(36).substr(2, 9),
-        text: botResponse,
+        text: botResponse || "No answer generated.",
         sender: "bot",
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, botMessage]);
-    }, 500);
+    } catch (error) {
+      const botMessage: ChatMessage = {
+        id: Math.random().toString(36).substr(2, 9),
+        text: `Query failed: ${error instanceof Error ? error.message : "unknown error"}`,
+        sender: "bot",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, botMessage]);
+    }
   };
 
   return (

@@ -3,7 +3,7 @@ import { useState, useRef } from "react";
 import { Button } from "./ui/button";
 
 interface FileUploadProps {
-  onFilesUploaded: (files: File[]) => void;
+  onFilesUploaded: (files: File[]) => void | Promise<void>;
 }
 
 export function FileUpload({ onFilesUploaded }: FileUploadProps) {
@@ -26,14 +26,14 @@ export function FileUpload({ onFilesUploaded }: FileUploadProps) {
     
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
-      onFilesUploaded(files);
+      void onFilesUploaded(files);
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
-      onFilesUploaded(files);
+      void onFilesUploaded(files);
     }
     // Reset input
     if (fileInputRef.current) {
@@ -64,6 +64,7 @@ export function FileUpload({ onFilesUploaded }: FileUploadProps) {
         ref={fileInputRef}
         type="file"
         multiple
+        accept=".txt,.vtt,text/plain"
         onChange={handleFileSelect}
         className="hidden"
       />
