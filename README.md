@@ -54,7 +54,7 @@ Key features:
 ### Prerequisites
 - Python 3.11 or higher
 - Node.js 18 or higher and npm
-- An [OpenRouter](https://openrouter.ai) API key (optional — the app runs in fallback mode without one)
+- An [OpenRouter](https://openrouter.ai) API key
 
 ---
 
@@ -147,7 +147,7 @@ The frontend will be available at `http://localhost:5173` (or whichever port Vit
 2. Navigate to the **Workspace** tab.
 3. Drag and drop one or more `.txt` or `.vtt` transcript files into the upload zone.
 4. View the extracted speakers, summary, decisions, and action items in the Analysis Results panel.
-5. Use the **Chat** panel on the right to ask natural language questions about your transcripts (e.g., *"What action items were assigned to Alice?"* or *"Summarize the decisions from last week's meeting"*).
+5. Use the **Chat** panel on the right to ask natural language questions about your transcripts (e.g., *"What action items were assigned to Alice?"* or *"Summarize the decisions from last week's meeting"*.
 6. Navigate to the **Dashboard** tab for an aggregated view across all uploaded meetings.
 7. Export decisions and action items from any meeting using the **Export CSV** or **Export PDF** buttons.
 
