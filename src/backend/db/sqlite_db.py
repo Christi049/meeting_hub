@@ -81,6 +81,22 @@ def init_db() -> None:
         """
     )
 
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS transcript_segments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            meeting_id INTEGER NOT NULL,
+            segment_index INTEGER NOT NULL,
+            start_time TEXT,
+            segment_text TEXT NOT NULL,
+            sentiment_label TEXT,
+            sentiment_score REAL,
+            speaker_sentiments TEXT,
+            FOREIGN KEY (meeting_id) REFERENCES meetings(id)
+        )
+        """
+    )
+
     conn.commit()
     conn.close()
 

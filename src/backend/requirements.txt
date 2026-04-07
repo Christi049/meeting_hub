@@ -5,3 +5,9 @@ python-dotenv
 langchain-core
 langchain-openai
 langchain-text-splitters
+transformers
+torch
+numpy
+scikit-learn
+spacy
+pydantic

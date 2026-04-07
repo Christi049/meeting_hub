@@ -4,33 +4,39 @@ import re
 from collections import OrderedDict
 
 from dotenv import load_dotenv
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # Load .env from the backend directory
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(env_path)
 
-# Initialize OpenRouter via LangChain (OpenAI-compatible API)
-api_key = os.getenv("OPENROUTER_API_KEY")
-llm = None
-if api_key:
-    llm = ChatOpenAI(
-        model="openai/gpt-4o-mini",
-        temperature=0.1,
-        openai_api_key=api_key,
-        openai_api_base="https://openrouter.ai/api/v1",
+# Try to import LangChain components, but provide fallbacks
+try:
+    from langchain_core.prompts import ChatPromptTemplate
+    from langchain_openai import ChatOpenAI
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+    # Initialize OpenRouter via LangChain (OpenAI-compatible API)
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    llm = None
+    if api_key:
+        llm = ChatOpenAI(
+            model="openai/gpt-4o-mini",
+            temperature=0.1,
+            openai_api_key=api_key,
+            openai_api_base="https://openrouter.ai/api/v1",
+        )
+
+    # TEXT SPLITTER — breaks long transcripts into manageable chunks
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=12000,
+        chunk_overlap=500,
+        separators=["\n\n", "\n", ". ", " "],
     )
 
-# ══════════════════════════════════════════════════════════════════
-# TEXT SPLITTER — breaks long transcripts into manageable chunks
-# ══════════════════════════════════════════════════════════════════
-text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=12000,
-    chunk_overlap=500,
-    separators=["\n\n", "\n", ". ", " "],
-)
+except ImportError:
+    print("Warning: LangChain dependencies not available, using fallback mode")
+    llm = None
+    text_splitter = None
 
 # ══════════════════════════════════════════════════════════════════
 # PROMPTS
@@ -361,17 +367,25 @@ def extract_summary(raw_text: str, filename: str) -> dict:
     if not unique_speakers:
         print("[Pipeline] Speaker regex found 0; trying participants/attendees fallback...")
         unique_speakers = _extract_speakers_from_participants_block(text)
-    # Use LLM as a supplemental extractor for formats regex may miss.
-    llm_speakers = _llm_extract_speakers(text) if llm else []
-    if llm_speakers:
-        unique_speakers = _merge_speaker_lists(unique_speakers, llm_speakers)
-    elif not unique_speakers:
-        print("[Pipeline] Participants fallback found 0; trying LLM speaker extraction fallback...")
-        unique_speakers = _llm_extract_speakers(text)
+
     print(f"[Pipeline] Speakers detected: {len(unique_speakers)}")
     total_word_count = _count_words_including_links(text)
 
     print(f"[Pipeline] Cleaned text: {len(text)} chars from '{filename}'")
+
+    # ── Fallback mode when LLM is not available ──
+    if not llm or not text_splitter:
+        print("[Pipeline] Using fallback mode - no LLM available")
+        return {
+            "unique_speakers": unique_speakers,
+            "speaker_count": len(unique_speakers),
+            "word_count": total_word_count,
+            "meeting_date": "Unknown",
+            "meeting_title": filename,
+            "abstractive_summary": _fallback_summary(text),
+            "decisions": [],
+            "action_items": []
+        }
 
     # ── Stage 2: Split into chunks for semantic analysis ──
     chunks = text_splitter.split_text(text)

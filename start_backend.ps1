@@ -1,0 +1,2 @@
+cd "c:\Users\us\Desktop\christi\meeting_hub\src\backend"
+python -m uvicorn app:app --host 127.0.0.1 --port 8000 --reload

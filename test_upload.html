@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Test</title>
+</head>
+<body>
+    <h1>Backend Upload Test</h1>
+    <input type="file" id="fileInput" accept=".txt,.vtt" />
+    <button onclick="uploadFile()">Upload</button>
+    <pre id="output"></pre>
+    
+    <script>
+        function log(msg) {
+            const output = document.getElementById('output');
+            output.textContent += msg + '\n';
+            console.log(msg);
+        }
+        
+        async function uploadFile() {
+            const file = document.getElementById('fileInput').files[0];
+            if (!file) {
+                log('ERROR: No file selected');
+                return;
+            }
+            
+            log(`[Upload] File: ${file.name} (${file.size} bytes)`);
+            
+            const formData = new FormData();
+            formData.append('files', file);
+            
+            try {
+                log(`[Upload] Sending to http://127.0.0.1:8000/upload-transcripts...`);
+                const response = await fetch('http://127.0.0.1:8000/upload-transcripts', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                log(`[Upload] Response status: ${response.status}`);
+                const data = await response.json();
+                log(`[Upload] Success! Response: ${JSON.stringify(data, null, 2)}`);
+            } catch (error) {
+                log(`[ERROR] ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>
